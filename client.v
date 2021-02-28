@@ -1,38 +1,27 @@
 import term.ui
+import strings
 
 struct App {
-	width int = 200
+	width  int = 200
 	height int = 100
 mut:
-	tui &ui.Context = 0
-	pixels [][]bool
-	x int
-	y int
+	tui      &ui.Context = 0
+	x        int
+	y        int
+	last_x   int
+	last_y   int
 	dragging bool
-	redraw bool = true
+	redraw   bool = true
 }
 
 fn on_frame(mut app App) {
-	if app.dragging {
-		if app.y < app.height && app.x < app.width {
-			app.pixels[app.y][app.x] = true
-		}
+	if !app.redraw {
+		return
 	}
-	
-	if !app.redraw { return }
-
-	app.tui.clear()
-	app.tui.set_bg_color(r: 255 g: 255 b: 255)
-
-	for y, row in app.pixels {
-		for x, pixel in row {
-			if pixel {
-				mut x_ := if x & 1 == 0 { x - 1 } else { x }
-				app.tui.set_cursor_position(x_, y)
-				app.tui.write("  ")
-			}
-		}
-	}
+	app.tui.set_bg_color(r: 255, g: 255, b: 255)
+	draw_line(mut app.tui, app.x, app.y, app.last_x, app.last_y)
+	app.last_x = app.x
+	app.last_y = app.y
 
 	app.tui.reset()
 	app.tui.flush()
@@ -46,7 +35,7 @@ fn on_event(event &ui.Event, mut app App) {
 			app.dragging = true
 		}
 		.mouse_up {
-		app.dragging = false
+			app.dragging = false
 		}
 		.mouse_move, .mouse_drag {
 			app.x = event.x
@@ -61,18 +50,52 @@ fn on_event(event &ui.Event, mut app App) {
 }
 
 fn main() {
-  mut app := &App {}
+	mut app := &App{}
 
-  app.tui = ui.init(
-    user_data: app
-    frame_fn: on_frame
-    event_fn: on_event
-    frame_rate: 60
-    hide_cursor: true
-    window_title: "scribble"
-  )
-
-	app.pixels = [][]bool { len: app.height, init: []bool { len: app.width } }
-  app.tui.run()?
+	app.tui = ui.init(
+		user_data: app
+		frame_fn: on_frame
+		event_fn: on_event
+		frame_rate: 60
+		hide_cursor: true
+		window_title: 'scribble'
+	)
+	app.tui.run() ?
 }
 
+pub fn draw_line(mut ctx ui.Context, x int, y int, x2 int, y2 int) {
+	min_x, min_y := if x < x2 { x } else { x2 }, if y < y2 { y } else { y2 }
+	max_x, _ := if x > x2 { x } else { x2 }, if y > y2 { y } else { y2 }
+	if y == y2 {
+		// Horizontal line, performance improvement
+		ctx.set_cursor_position(min_x, min_y)
+		ctx.write(strings.repeat(` `, max_x + 1 - min_x))
+		return
+	}
+	// Draw the various points with Bresenham's line algorithm:
+	mut x0, x1 := x, x2
+	mut y0, y1 := y, y2
+	sx := if x0 < x1 { 1 } else { -1 }
+	sy := if y0 < y1 { 1 } else { -1 }
+	dx := if x0 < x1 { x1 - x0 } else { x0 - x1 }
+	dy := if y0 < y1 { y0 - y1 } else { y1 - y0 } // reversed
+	mut err := dx + dy
+	for {
+		// res << Segment{ x0, y0 }
+		x_ := if x0 & 1 == 0 { x0 - 1 } else { x0 }
+		ctx.draw_point(x_, y0)
+		ctx.draw_point(x_ + 1, y0)
+		if x0 == x1 && y0 == y1 {
+			break
+		}
+		e2 := 2 * err
+		if e2 >= dy {
+			err += dy
+			x0 += sx
+		}
+		if e2 <= dx {
+			err += dx
+			y0 += sy
+		}
+	}
+}
