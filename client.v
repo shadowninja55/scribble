@@ -13,15 +13,21 @@ mut:
 
 fn on_frame(mut app App) {
 	app.tui.clear()
+	app.tui.reset()
 
 	if app.dragging {
-		app.pixels[app.y][app.x] = true
+		if app.y < app.height && app.x < app.width {
+			app.pixels[app.y][app.x] = true
+		}
 	}
 
 	for y, row in app.pixels {
 		for x, pixel in row {
 			if pixel {
-				app.tui.draw_rect(x, y, x + 1, y + 1)
+				app.tui.set_cursor_position(x, y)
+				app.tui.set_bg_color(r: 255 g: 255 b: 255)
+				app.tui.write("  ")
+				app.tui.reset()
 			}
 		}
 	}
@@ -37,7 +43,7 @@ fn on_event(event &ui.Event, mut app App) {
 		.mouse_up {
 			app.dragging = false
 		}
-		.mouse_move {
+		.mouse_move, .mouse_drag {
 			app.x = event.x
 			app.y = event.y
 		}
@@ -57,8 +63,7 @@ fn main() {
     window_title: "scribble"
   )
 
-	app.pixels = [][]bool{ len: app.height, init: []bool{ len: app.width } }
-
+	app.pixels = [][]bool { len: app.height, init: []bool { len: app.width } }
   app.tui.run()?
 }
 
