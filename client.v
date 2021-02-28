@@ -15,11 +15,17 @@ mut:
 }
 
 fn on_frame(mut app App) {
+	if !app.dragging {
+		app.last_x = 0
+		app.last_y = 0
+	}
 	if !app.redraw {
 		return
 	}
 	app.tui.set_bg_color(r: 255, g: 255, b: 255)
-	draw_line(mut app.tui, app.x, app.y, app.last_x, app.last_y)
+	if app.last_x != 0 && app.last_y != 0 {
+		draw_line(mut app.tui, app.x, app.y, app.last_x, app.last_y)
+	}
 	app.last_x = app.x
 	app.last_y = app.y
 
