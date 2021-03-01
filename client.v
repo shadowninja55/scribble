@@ -18,20 +18,30 @@ mut:
 	erasing bool
 }
 
-const colors = [
-	ui.Color { r: 255 }, // red
-	ui.Color { r: 255 g: 127 }, // orange
-	ui.Color { r: 255 g: 255 }, // yellow
-	ui.Color { r: 127 g: 255 }, // chartreuse
-	ui.Color { g: 255 }, // lime
-	ui.Color { g: 255 b: 127 }, // emerald
-	ui.Color { g: 255 b: 255 }, // cyan
-	ui.Color { g: 127 b: 255 }, // azure
-	ui.Color { b: 255 }, // blue
-	ui.Color { b: 255 r: 127 }, // violet
-	ui.Color { b: 255 r: 255 }, // magenta
-	ui.Color { b: 127 r: 255 } // rose
-]
+const ( 
+	colors = [
+		ui.Color { r: 255 }, // red
+		ui.Color { r: 255 g: 127 }, // orange
+		ui.Color { r: 255 g: 255 }, // yellow
+		ui.Color { r: 127 g: 255 }, // chartreuse
+		ui.Color { g: 255 }, // lime
+		ui.Color { g: 255 b: 127 }, // emerald
+		ui.Color { g: 255 b: 255 }, // cyan
+		ui.Color { g: 127 b: 255 }, // azure
+		ui.Color { b: 255 }, // blue
+		ui.Color { b: 255 r: 127 }, // violet
+		ui.Color { b: 255 r: 255 }, // magenta
+		ui.Color { b: 127 r: 255 } // rose
+	]
+
+	bg_color = ui.Color { r: 255 g: 255 b: 255 }
+)
+
+fn on_init(mut app App) {
+	app.tui.set_bg_color(bg_color)
+	app.tui.draw_rect(1, 1, app.width, app.height + 1)
+	app.tui.flush()
+}
 
 fn on_frame(mut app App) {
 	if !app.dragging && !app.erasing {
@@ -43,7 +53,7 @@ fn on_frame(mut app App) {
 	  app.tui.draw_point(1, 1)
 		app.tui.draw_point(2, 1)
 	} else {
-		app.tui.reset()
+		app.tui.set_bg_color(bg_color)
 	}
 	
 	if app.last.x != 0 && app.last.y != 0 {
@@ -51,7 +61,6 @@ fn on_frame(mut app App) {
 	}
 
 	app.last = app.curr
-	app.tui.reset()
 	app.tui.flush()
 }
 
@@ -113,6 +122,7 @@ fn main() {
 		user_data: app
 		frame_fn: on_frame
 		event_fn: on_event
+		init_fn: on_init
 		frame_rate: 60
 		hide_cursor: true
 		window_title: 'scribble'
