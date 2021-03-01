@@ -28,10 +28,9 @@ fn on_frame(mut app App) {
 
 	app.tui.set_bg_color(r: 255, g: 255, b: 255)
 	if app.last.x != 0 && app.last.y != 0 {
-		draw_line(mut app.tui, app.curr, app.last)
+		draw_line(mut app.tui, app.last, app.curr)
 	}
-	app.last.x = app.curr.x
-	app.last.y = app.curr.y
+	app.last = app.curr
 
 	app.tui.reset()
 	app.tui.flush()
@@ -76,12 +75,13 @@ fn main() {
 pub fn draw_line(mut ctx ui.Context, p1 Pos, p2 Pos) {
 	min_x, min_y := if p1.x < p2.x { p1.x } else { p2.x }, if p1.y < p2.y { p1.y } else { p2.y }
 	max_x, _ := if p1.x > p2.x { p1.x } else { p2.x }, if p1.y > p2.y { p1.y } else { p2.y }
-	if p1.y == p2.y {
+	/* if p1.y == p2.y {
 		// Horizontal line, performance improvement
 		ctx.set_cursor_position(min_x, min_y)
 		ctx.write(strings.repeat(` `, max_x + 1 - min_x))
 		return
-	}
+	} */
+
 	// Draw the various points with Bresenham's line algorithm:
 	mut x0, x1 := p1.x, p2.x
 	mut y0, y1 := p1.y, p2.y
