@@ -15,6 +15,7 @@ mut:
 	last Pos
 	selector int
 	dragging bool
+	erasing bool
 }
 
 const colors = [
@@ -33,19 +34,23 @@ const colors = [
 ]
 
 fn on_frame(mut app App) {
-	if !app.dragging {
+	if !app.dragging && !app.erasing {
 		app.last = {}
 	}
 
-	app.tui.set_bg_color(colors[app.selector])
-	app.tui.draw_point(1, 1)
-	app.tui.draw_point(2, 1)
-
+	if !app.erasing {
+		app.tui.set_bg_color(colors[app.selector])
+	  app.tui.draw_point(1, 1)
+		app.tui.draw_point(2, 1)
+	} else {
+		app.tui.reset()
+	}
+	
 	if app.last.x != 0 && app.last.y != 0 {
 		draw_line(mut app.tui, app.last, app.curr)
 	}
-	app.last = app.curr
 
+	app.last = app.curr
 	app.tui.reset()
 	app.tui.flush()
 }
@@ -53,10 +58,26 @@ fn on_frame(mut app App) {
 fn on_event(event &ui.Event, mut app App) {
 	match event.typ {
 		.mouse_down {
-			app.dragging = true
+			match event.button {
+				.left {
+					app.dragging = true
+				}
+				.right {
+					app.erasing = true
+				}
+				else {}
+			}
 		}
 		.mouse_up {
-			app.dragging = false
+			match event.button {
+				.left {
+					app.dragging = false
+				}
+				.right {
+					app.erasing = false
+				}
+				else {}
+			}
 		}
 		.mouse_move, .mouse_drag {
 			app.curr.x = event.x
