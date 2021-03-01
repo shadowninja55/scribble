@@ -1,5 +1,4 @@
 import term.ui
-import strings
 
 struct Pos {
 mut:
@@ -73,16 +72,7 @@ fn main() {
 }
 
 pub fn draw_line(mut ctx ui.Context, p1 Pos, p2 Pos) {
-	min_x, min_y := if p1.x < p2.x { p1.x } else { p2.x }, if p1.y < p2.y { p1.y } else { p2.y }
-	max_x, _ := if p1.x > p2.x { p1.x } else { p2.x }, if p1.y > p2.y { p1.y } else { p2.y }
-	/* if p1.y == p2.y {
-		// Horizontal line, performance improvement
-		ctx.set_cursor_position(min_x, min_y)
-		ctx.write(strings.repeat(` `, max_x + 1 - min_x))
-		return
-	} */
-
-	// Draw the various points with Bresenham's line algorithm:
+  // Draw the various points with Bresenham's line algorithm:
 	mut x0, x1 := p1.x, p2.x
 	mut y0, y1 := p1.y, p2.y
 	sx := if x0 < x1 { 1 } else { -1 }
