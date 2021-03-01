@@ -1,33 +1,37 @@
 import term.ui
 import strings
 
+struct Pos {
+mut:
+	x int
+	y int
+}
+
 struct App {
 	width  int = 200
 	height int = 100
 mut:
 	tui      &ui.Context = 0
-	x        int
-	y        int
-	last_x   int
-	last_y   int
+	curr Pos
+	last Pos
 	dragging bool
 	redraw   bool = true
 }
 
 fn on_frame(mut app App) {
 	if !app.dragging {
-		app.last_x = 0
-		app.last_y = 0
+		app.last = {}
 	}
 	if !app.redraw {
 		return
 	}
+
 	app.tui.set_bg_color(r: 255, g: 255, b: 255)
-	if app.last_x != 0 && app.last_y != 0 {
-		draw_line(mut app.tui, app.x, app.y, app.last_x, app.last_y)
+	if app.last.x != 0 && app.last.y != 0 {
+		draw_line(mut app.tui, app.curr, app.last)
 	}
-	app.last_x = app.x
-	app.last_y = app.y
+	app.last.x = app.curr.x
+	app.last.y = app.curr.y
 
 	app.tui.reset()
 	app.tui.flush()
@@ -44,8 +48,8 @@ fn on_event(event &ui.Event, mut app App) {
 			app.dragging = false
 		}
 		.mouse_move, .mouse_drag {
-			app.x = event.x
-			app.y = event.y
+			app.curr.x = event.x
+			app.curr.y = event.y
 
 			if app.dragging {
 				app.redraw = true
@@ -69,18 +73,18 @@ fn main() {
 	app.tui.run() ?
 }
 
-pub fn draw_line(mut ctx ui.Context, x int, y int, x2 int, y2 int) {
-	min_x, min_y := if x < x2 { x } else { x2 }, if y < y2 { y } else { y2 }
-	max_x, _ := if x > x2 { x } else { x2 }, if y > y2 { y } else { y2 }
-	if y == y2 {
+pub fn draw_line(mut ctx ui.Context, p1 Pos, p2 Pos) {
+	min_x, min_y := if p1.x < p2.x { p1.x } else { p2.x }, if p1.y < p2.y { p1.y } else { p2.y }
+	max_x, _ := if p1.x > p2.x { p1.x } else { p2.x }, if p1.y > p2.y { p1.y } else { p2.y }
+	if p1.y == p2.y {
 		// Horizontal line, performance improvement
 		ctx.set_cursor_position(min_x, min_y)
 		ctx.write(strings.repeat(` `, max_x + 1 - min_x))
 		return
 	}
 	// Draw the various points with Bresenham's line algorithm:
-	mut x0, x1 := x, x2
-	mut y0, y1 := y, y2
+	mut x0, x1 := p1.x, p2.x
+	mut y0, y1 := p1.y, p2.y
 	sx := if x0 < x1 { 1 } else { -1 }
 	sy := if y0 < y1 { 1 } else { -1 }
 	dx := if x0 < x1 { x1 - x0 } else { x0 - x1 }
