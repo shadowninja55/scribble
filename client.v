@@ -13,19 +13,26 @@ mut:
 	tui      &ui.Context = 0
 	curr Pos
 	last Pos
+	selector int
 	dragging bool
-	redraw   bool = true
 }
+
+const colors = [
+	ui.Color { r: 255 },
+	ui.Color { g: 255 },
+	ui.Color { b: 255 },
+	ui.Color { r: 255 g: 255 b: 255 }
+]
 
 fn on_frame(mut app App) {
 	if !app.dragging {
 		app.last = {}
 	}
-	if !app.redraw {
-		return
-	}
 
-	app.tui.set_bg_color(r: 255, g: 255, b: 255)
+	app.tui.set_bg_color(colors[app.selector])
+	app.tui.draw_point(1, 1)
+	app.tui.draw_point(2, 1)
+
 	if app.last.x != 0 && app.last.y != 0 {
 		draw_line(mut app.tui, app.last, app.curr)
 	}
@@ -36,8 +43,6 @@ fn on_frame(mut app App) {
 }
 
 fn on_event(event &ui.Event, mut app App) {
-	app.redraw = false
-
 	match event.typ {
 		.mouse_down {
 			app.dragging = true
@@ -48,9 +53,24 @@ fn on_event(event &ui.Event, mut app App) {
 		.mouse_move, .mouse_drag {
 			app.curr.x = event.x
 			app.curr.y = event.y
+		}
+		.mouse_scroll {
+			match event.direction {
+				.up {
+					app.selector++
 
-			if app.dragging {
-				app.redraw = true
+					if app.selector >= colors.len {
+						app.selector = 0
+					}
+				}
+				.down {
+					app.selector--
+
+					if app.selector < 0 {
+						app.selector = colors.len - 1
+					}
+				}
+				else {}
 			}
 		}
 		else {}
