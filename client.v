@@ -18,10 +18,18 @@ mut:
 }
 
 const colors = [
-	ui.Color { r: 255 },
-	ui.Color { g: 255 },
-	ui.Color { b: 255 },
-	ui.Color { r: 255 g: 255 b: 255 }
+	ui.Color { r: 255 }, // red
+	ui.Color { r: 255 g: 127 }, // orange
+	ui.Color { r: 255 g: 255 }, // yellow
+	ui.Color { r: 127 g: 255 }, // chartreuse
+	ui.Color { g: 255 }, // lime
+	ui.Color { g: 255 b: 127 }, // emerald
+	ui.Color { g: 255 b: 255 }, // cyan
+	ui.Color { g: 127 b: 255 }, // azure
+	ui.Color { b: 255 }, // blue
+	ui.Color { b: 255 r: 127 }, // violet
+	ui.Color { b: 255 r: 255 }, // magenta
+	ui.Color { b: 127 r: 255 } // rose
 ]
 
 fn on_frame(mut app App) {
