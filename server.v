@@ -1,5 +1,10 @@
 import net
 import os
+import x.json2
+
+struct App {
+	word string
+}
 
 struct Server {
 mut:
@@ -21,8 +26,17 @@ fn (mut server Server) handle_conn(conn &net.TcpConn) {
 	server.clients << client
 	for {
 		line := client.conn.read_line()
-		for mut receiver in server.clients {
-			receiver.conn.write_str(line) or { continue }
+		if line != '' {
+			msg := json2.raw_decode(line) or { continue }
+			content := msg.as_map()
+			match content['type'] {
+				'line' {}
+				'word' {}
+				else {}
+			}
+			for mut receiver in server.clients {
+				receiver.conn.write_str(line) or { continue }
+			}
 		}
 	}
 }

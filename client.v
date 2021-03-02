@@ -1,5 +1,5 @@
 import term.ui
-import os
+import net
 
 struct Pos {
 mut:
@@ -9,34 +9,70 @@ mut:
 
 struct App {
 mut:
-	tui &ui.Context = 0
-	curr Pos
-	last Pos
+	tui      &ui.Context = 0
+	curr     Pos
+	last     Pos
 	selected int
 	dragging bool
-	erasing bool
+	erasing  bool
+	conn     &net.TcpConn
 }
 
-const ( 
-	canvas_width = 100
+const (
+	canvas_width  = 100
 	canvas_height = 25
-
-	colors = [
-		ui.Color { r: 255 }, // red
-		ui.Color { r: 255 g: 127 }, // orange
-		ui.Color { r: 255 g: 255 }, // yellow
-		ui.Color { r: 127 g: 255 }, // chartreuse
-		ui.Color { g: 255 }, // lime
-		ui.Color { g: 255 b: 127 }, // emerald
-		ui.Color { g: 255 b: 255 }, // cyan
-		ui.Color { g: 127 b: 255 }, // azure
-		ui.Color { b: 255 }, // blue
-		ui.Color { b: 255 r: 127 }, // violet
-		ui.Color { b: 255 r: 255 }, // magenta
-		ui.Color { b: 127 r: 255 } // rose
+	colors        = [
+		ui.Color{
+			r: 255
+		} /* red */,
+		ui.Color{
+			r: 255
+			g: 127
+		} /* orange */,
+		ui.Color{
+			r: 255
+			g: 255
+		} /* yellow */,
+		ui.Color{
+			r: 127
+			g: 255
+		} /* chartreuse */,
+		ui.Color{
+			g: 255
+		} /* lime */,
+		ui.Color{
+			g: 255
+			b: 127
+		} /* emerald */,
+		ui.Color{
+			g: 255
+			b: 255
+		} /* cyan */,
+		ui.Color{
+			g: 127
+			b: 255
+		} /* azure */,
+		ui.Color{
+			b: 255
+		} /* blue */,
+		ui.Color{
+			b: 255
+			r: 127
+		} /* violet */,
+		ui.Color{
+			b: 255
+			r: 255
+		} /* magenta */,
+		ui.Color{
+			b: 127
+			r: 255
+		} /* rose */,
 	]
-
-	bg_color = ui.Color { r: 255 g: 255 b: 255 }
+	bg_color      = ui.Color{
+		r: 255
+		g: 255
+		b: 255
+	}
 )
 
 fn on_init(mut app App) {
@@ -56,10 +92,13 @@ fn on_frame(mut app App) {
 	} else {
 		app.tui.set_bg_color(bg_color)
 	}
-	
-	
+
 	if app.last.x != 0 && app.last.y != 0 {
-		if app.curr.x <= canvas_width && app.curr.y <= canvas_height && app.last.x <= canvas_width && app.last.y <= canvas_height {
+		if app.curr.x <= canvas_width && app.curr.y <= canvas_height && app.last.x <= canvas_width
+			&& app.last.y <= canvas_height {
+			app.conn.write_str('{"type": "line", "curr": {"x": $app.curr.x, "y": $app.curr.y}, "last": {"x": $app.last.x, "y": $app.last.y}}') or {
+				panic(err)
+			}
 			draw_line(mut app.tui, app.last, app.curr)
 		}
 	}
@@ -120,7 +159,9 @@ fn on_event(event &ui.Event, mut app App) {
 }
 
 fn main() {
-	mut app := &App{}
+	mut app := &App{
+		conn: 0
+	}
 
 	app.tui = ui.init(
 		user_data: app
@@ -131,6 +172,7 @@ fn main() {
 		hide_cursor: true
 		window_title: 'scribble'
 	)
+	app.conn = net.dial_tcp('127.0.0.1:6969') ?
 	app.tui.run() ?
 }
 
@@ -140,7 +182,7 @@ pub fn draw_line(mut ctx ui.Context, p1 Pos, p2 Pos) {
 	sx := if x0 < x1 { 1 } else { -1 }
 	sy := if y0 < y1 { 1 } else { -1 }
 	dx := if x0 < x1 { x1 - x0 } else { x0 - x1 }
-	dy := if y0 < y1 { y0 - y1 } else { y1 - y0 } 
+	dy := if y0 < y1 { y0 - y1 } else { y1 - y0 }
 	mut err := dx + dy
 	for {
 		x_ := if x0 & 1 == 0 { x0 - 1 } else { x0 }
@@ -163,7 +205,7 @@ pub fn draw_line(mut ctx ui.Context, p1 Pos, p2 Pos) {
 
 pub fn draw_palette(mut ctx ui.Context, selected int) {
 	// drawing out colors
-	for idx in 0..colors.len {
+	for idx in 0 .. colors.len {
 		x := 1 + idx * 2
 
 		ctx.set_bg_color(colors[idx])
@@ -175,5 +217,5 @@ pub fn draw_palette(mut ctx ui.Context, selected int) {
 	ctx.set_bg_color(colors[selected])
 	ctx.set_color({})
 	ctx.set_cursor_position(1 + selected * 2, canvas_height + 1)
-	ctx.write("><")
+	ctx.write('><')
 }
