@@ -1,4 +1,5 @@
 import term.ui
+import os
 
 struct Pos {
 mut:
@@ -7,18 +8,19 @@ mut:
 }
 
 struct App {
-	width  int = 200
-	height int = 100
 mut:
-	tui      &ui.Context = 0
+	tui &ui.Context = 0
 	curr Pos
 	last Pos
-	selector int
+	selected int
 	dragging bool
 	erasing bool
 }
 
 const ( 
+	canvas_width = 100
+	canvas_height = 25
+
 	colors = [
 		ui.Color { r: 255 }, // red
 		ui.Color { r: 255 g: 127 }, // orange
@@ -39,7 +41,7 @@ const (
 
 fn on_init(mut app App) {
 	app.tui.set_bg_color(bg_color)
-	app.tui.draw_rect(1, 1, app.width, app.height + 1)
+	app.tui.draw_rect(1, 1, canvas_width, canvas_height)
 	app.tui.flush()
 }
 
@@ -49,12 +51,12 @@ fn on_frame(mut app App) {
 	}
 
 	if !app.erasing {
-		app.tui.set_bg_color(colors[app.selector])
-	  app.tui.draw_point(1, 1)
-		app.tui.draw_point(2, 1)
+		app.tui.set_bg_color(colors[app.selected])
+		draw_palette(mut app.tui, app.selected)
 	} else {
 		app.tui.set_bg_color(bg_color)
 	}
+	
 	
 	if app.last.x != 0 && app.last.y != 0 {
 		draw_line(mut app.tui, app.last, app.curr)
@@ -95,17 +97,17 @@ fn on_event(event &ui.Event, mut app App) {
 		.mouse_scroll {
 			match event.direction {
 				.up {
-					app.selector++
+					app.selected++
 
-					if app.selector >= colors.len {
-						app.selector = 0
+					if app.selected >= colors.len {
+						app.selected = 0
 					}
 				}
 				.down {
-					app.selector--
+					app.selected--
 
-					if app.selector < 0 {
-						app.selector = colors.len - 1
+					if app.selected < 0 {
+						app.selected = colors.len - 1
 					}
 				}
 				else {}
@@ -131,16 +133,14 @@ fn main() {
 }
 
 pub fn draw_line(mut ctx ui.Context, p1 Pos, p2 Pos) {
-  // Draw the various points with Bresenham's line algorithm:
 	mut x0, x1 := p1.x, p2.x
 	mut y0, y1 := p1.y, p2.y
 	sx := if x0 < x1 { 1 } else { -1 }
 	sy := if y0 < y1 { 1 } else { -1 }
 	dx := if x0 < x1 { x1 - x0 } else { x0 - x1 }
-	dy := if y0 < y1 { y0 - y1 } else { y1 - y0 } // reversed
+	dy := if y0 < y1 { y0 - y1 } else { y1 - y0 } 
 	mut err := dx + dy
 	for {
-		// res << Segment{ x0, y0 }
 		x_ := if x0 & 1 == 0 { x0 - 1 } else { x0 }
 		ctx.draw_point(x_, y0)
 		ctx.draw_point(x_ + 1, y0)
@@ -157,4 +157,21 @@ pub fn draw_line(mut ctx ui.Context, p1 Pos, p2 Pos) {
 			y0 += sy
 		}
 	}
+}
+
+pub fn draw_palette(mut ctx ui.Context, selected int) {
+	// drawing out colors
+	for idx in 0..colors.len {
+		x := 1 + idx * 2
+
+		ctx.set_bg_color(colors[idx])
+		ctx.draw_point(x, canvas_height + 1)
+		ctx.draw_point(x + 1, canvas_height + 1)
+	}
+
+	// drawing selected
+	ctx.set_bg_color(colors[selected])
+	ctx.set_color({})
+	ctx.set_cursor_position(1 + selected * 2, canvas_height + 1)
+	ctx.write("><")
 }
