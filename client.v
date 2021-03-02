@@ -59,7 +59,9 @@ fn on_frame(mut app App) {
 	
 	
 	if app.last.x != 0 && app.last.y != 0 {
-		draw_line(mut app.tui, app.last, app.curr)
+		if app.curr.x <= canvas_width && app.curr.y <= canvas_height && app.last.x <= canvas_width && app.last.y <= canvas_height {
+			draw_line(mut app.tui, app.last, app.curr)
+		}
 	}
 
 	app.last = app.curr
