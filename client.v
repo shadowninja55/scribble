@@ -172,6 +172,10 @@ fn on_event(event &ui.Event, mut app App) {
 			app.curr.y = event.y
 		}
 		.mouse_scroll {
+			if !app.drawing {
+				return
+			}
+
 			match event.direction {
 				.up {
 					app.selected++
