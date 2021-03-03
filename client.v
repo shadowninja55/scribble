@@ -86,16 +86,15 @@ fn on_init(mut app App) {
 }
 
 fn on_frame(mut app App) {
+	if !app.erasing {
+		app.tui.set_bg_color(colors[app.selected])
+		draw_palette(mut app.tui, app.selected)
+	} else {
+		app.tui.set_bg_color(bg_color)
+	}
 	if app.drawing {
 		if !app.dragging && !app.erasing {
 			app.last = {}
-		}
-
-		if !app.erasing {
-			app.tui.set_bg_color(colors[app.selected])
-			draw_palette(mut app.tui, app.selected)
-		} else {
-			app.tui.set_bg_color(bg_color)
 		}
 
 		if app.last.x != 0 && app.last.y != 0 {
@@ -132,6 +131,9 @@ fn on_frame(mut app App) {
 					app.selected = m['col'].int()
 					draw_palette(mut app.tui, app.selected)
 				}
+				'erase' {
+					app.erasing = m['erasing'].bool()
+				}
 				else {}
 			}
 		}
@@ -148,6 +150,7 @@ fn on_event(event &ui.Event, mut app App) {
 				}
 				.right {
 					app.erasing = true
+					app.conn.write_str('{"type": "erase", "erasing": true}') or { panic(err) }
 				}
 				else {}
 			}
@@ -159,6 +162,7 @@ fn on_event(event &ui.Event, mut app App) {
 				}
 				.right {
 					app.erasing = false
+					app.conn.write_str('{"type": "erase", "erasing": false}') or { panic(err) }
 				}
 				else {}
 			}
