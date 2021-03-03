@@ -1,5 +1,7 @@
 import term.ui
+import x.json2
 import net
+import os
 
 struct Pos {
 mut:
@@ -16,6 +18,7 @@ mut:
 	dragging bool
 	erasing  bool
 	conn     &net.TcpConn
+	drawing  bool
 }
 
 const (
@@ -78,32 +81,61 @@ const (
 fn on_init(mut app App) {
 	app.tui.set_bg_color(bg_color)
 	app.tui.draw_rect(1, 1, canvas_width, canvas_height)
+	draw_palette(mut app.tui, app.selected)
 	app.tui.flush()
 }
 
 fn on_frame(mut app App) {
-	if !app.dragging && !app.erasing {
-		app.last = {}
-	}
+	if app.drawing {
+		if !app.dragging && !app.erasing {
+			app.last = {}
+		}
 
-	if !app.erasing {
-		app.tui.set_bg_color(colors[app.selected])
-		draw_palette(mut app.tui, app.selected)
-	} else {
-		app.tui.set_bg_color(bg_color)
-	}
+		if !app.erasing {
+			app.tui.set_bg_color(colors[app.selected])
+			draw_palette(mut app.tui, app.selected)
+		} else {
+			app.tui.set_bg_color(bg_color)
+		}
 
-	if app.last.x != 0 && app.last.y != 0 {
-		if app.curr.x <= canvas_width && app.curr.y <= canvas_height && app.last.x <= canvas_width
-			&& app.last.y <= canvas_height {
-			app.conn.write_str('{"type": "line", "curr": {"x": $app.curr.x, "y": $app.curr.y}, "last": {"x": $app.last.x, "y": $app.last.y}}') or {
-				panic(err)
+		if app.last.x != 0 && app.last.y != 0 {
+			if app.curr.x <= canvas_width && app.curr.y <= canvas_height
+				&& app.last.x <= canvas_width && app.last.y <= canvas_height {
+				app.conn.write_str('{"type": "line", "curr": {"x": $app.curr.x, "y": $app.curr.y}, "last": {"x": $app.last.x, "y": $app.last.y}}') or {
+					panic(err)
+				}
+				draw_line(mut app.tui, app.last, app.curr)
 			}
-			draw_line(mut app.tui, app.last, app.curr)
+		}
+
+		app.last = app.curr
+	} else {
+		msg := app.conn.read_line()
+		if msg != '' {
+			dec := json2.raw_decode(msg) or { panic('decode error: $err') }
+			m := dec.as_map()
+			match m['type'].str() {
+				'line' {
+					c := m['curr'].as_map()
+					l := m['last'].as_map()
+					curr := Pos{
+						x: c['x'].int()
+						y: c['y'].int()
+					}
+					last := Pos{
+						x: l['x'].int()
+						y: l['y'].int()
+					}
+					draw_line(mut app.tui, last, curr)
+				}
+				'select' {
+					app.selected = m['col'].int()
+					draw_palette(mut app.tui, app.selected)
+				}
+				else {}
+			}
 		}
 	}
-
-	app.last = app.curr
 	app.tui.flush()
 }
 
@@ -143,6 +175,7 @@ fn on_event(event &ui.Event, mut app App) {
 					if app.selected >= colors.len {
 						app.selected = 0
 					}
+					app.conn.write_str('{"type": "select", "col": $app.selected}') or { panic(err) }
 				}
 				.down {
 					app.selected--
@@ -150,6 +183,7 @@ fn on_event(event &ui.Event, mut app App) {
 					if app.selected < 0 {
 						app.selected = colors.len - 1
 					}
+					app.conn.write_str('{"type": "select", "col": $app.selected}') or { panic(err) }
 				}
 				else {}
 			}
@@ -173,6 +207,7 @@ fn main() {
 		window_title: 'scribble'
 	)
 	app.conn = net.dial_tcp('127.0.0.1:6969') ?
+	app.drawing = os.input('e: ').bool()
 	app.tui.run() ?
 }
 

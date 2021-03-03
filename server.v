@@ -27,6 +27,7 @@ fn (mut server Server) handle_conn(conn &net.TcpConn) {
 	for {
 		line := client.conn.read_line()
 		if line != '' {
+			println(line)
 			msg := json2.raw_decode(line) or { continue }
 			content := msg.as_map()
 			match content['type'].str() {
