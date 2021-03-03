@@ -29,7 +29,7 @@ fn (mut server Server) handle_conn(conn &net.TcpConn) {
 		if line != '' {
 			msg := json2.raw_decode(line) or { continue }
 			content := msg.as_map()
-			match content['type'] {
+			match content['type'].str() {
 				'line' {}
 				'word' {}
 				else {}
