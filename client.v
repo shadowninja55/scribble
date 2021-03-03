@@ -17,7 +17,7 @@ mut:
 	selected int
 	dragging bool
 	erasing  bool
-	conn     &net.TcpConn
+	conn     &net.TcpConn = 0
 	drawing  bool
 }
 
@@ -197,9 +197,7 @@ fn on_event(event &ui.Event, mut app App) {
 }
 
 fn main() {
-	mut app := &App{
-		conn: 0
-	}
+	mut app := &App{}
 
 	app.tui = ui.init(
 		user_data: app
