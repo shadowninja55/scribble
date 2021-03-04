@@ -19,11 +19,16 @@ mut:
 	erasing  bool
 	conn     &net.TcpConn
 	drawing  bool
+	name     string
+	points   int
+	chat     []string
+	text     string
 }
 
 const (
 	canvas_width  = 100
 	canvas_height = 25
+	chat_width    = 50
 	colors        = [
 		ui.Color{
 			r: 255
@@ -80,26 +85,41 @@ const (
 
 fn on_init(mut app App) {
 	app.tui.set_bg_color(bg_color)
-	app.tui.draw_rect(1, 1, canvas_width, canvas_height)
+	app.tui.draw_rect(chat_width, 1, chat_width + app.tui.window_width, canvas_height)
+	app.draw_name()
+	app.tui.draw_text(1, canvas_height + 1, '> ')
 	draw_palette(mut app.tui, app.selected)
 	app.tui.flush()
 }
 
 fn on_frame(mut app App) {
+	app.draw_name()
+	msg := app.conn.read_line()
+	app.draw_chat()
+	app.tui.draw_text(3, canvas_height + 1, app.text.len.str())
 	if !app.erasing {
 		app.tui.set_bg_color(colors[app.selected])
 		draw_palette(mut app.tui, app.selected)
-	} else {
-		app.tui.set_bg_color(bg_color)
 	}
 	if app.drawing {
+		if msg != '' {
+			dec := json2.raw_decode(msg) or { panic('decode error: $err') }
+			m := dec.as_map()
+			match m['type'].str() {
+				'chat' {
+					app.chat << m['sender'].str() + ': ' + m['message'].str()
+				}
+				else {}
+			}
+		}
 		if !app.dragging && !app.erasing {
 			app.last = {}
 		}
 
 		if app.last.x != 0 && app.last.y != 0 {
-			if app.curr.x <= canvas_width && app.curr.y <= canvas_height
-				&& app.last.x <= canvas_width && app.last.y <= canvas_height {
+			if app.curr.x <= canvas_width + chat_width && app.curr.x >= chat_width
+				&& app.curr.y <= canvas_height && app.last.x <= canvas_width + chat_width
+				&& app.last.x >= chat_width && app.last.y <= canvas_height {
 				app.conn.write_str('{"type": "line", "curr": {"x": $app.curr.x, "y": $app.curr.y}, "last": {"x": $app.last.x, "y": $app.last.y}}') or {
 					panic(err)
 				}
@@ -109,7 +129,6 @@ fn on_frame(mut app App) {
 
 		app.last = app.curr
 	} else {
-		msg := app.conn.read_line()
 		if msg != '' {
 			dec := json2.raw_decode(msg) or { panic('decode error: $err') }
 			m := dec.as_map()
@@ -133,6 +152,9 @@ fn on_frame(mut app App) {
 				}
 				'erase' {
 					app.erasing = m['erasing'].bool()
+				}
+				'chat' {
+					app.chat << m['sender'].str() + ': ' + m['message'].str()
 				}
 				else {}
 			}
@@ -192,6 +214,28 @@ fn on_event(event &ui.Event, mut app App) {
 				else {}
 			}
 		}
+		.key_down {
+			match event.code {
+				.backspace {
+					app.text = app.text[..(app.text.len - 1)]
+					app.tui.draw_line(3, canvas_height + 1, app.text.len + 3, canvas_height + 1)
+				}
+				else {}
+			}
+			match event.utf8 {
+				'\n' {
+					app.tui.set_bg_color(bg_color)
+					app.tui.draw_line(3, canvas_height + 1, app.text.len + 3, canvas_height + 1)
+					app.conn.write_str('{"type": "chat", "message": "$app.text", "sender": "$app.name"}') or {
+						panic(err)
+					}
+					app.text = ''
+				}
+				else {
+					app.text += event.utf8
+				}
+			}
+		}
 		else {}
 	}
 }
@@ -211,6 +255,9 @@ fn main() {
 		window_title: 'scribble'
 	)
 	app.conn = net.dial_tcp('127.0.0.1:6969') ?
+	name := os.input('choose a name: ')
+	app.name = name
+	app.conn.write_str('{"type": "join", "name": "$name"}') ?
 	app.drawing = os.input('e: ').bool()
 	app.tui.run() ?
 }
@@ -245,7 +292,7 @@ pub fn draw_line(mut ctx ui.Context, p1 Pos, p2 Pos) {
 pub fn draw_palette(mut ctx ui.Context, selected int) {
 	// drawing out colors
 	for idx in 0 .. colors.len {
-		x := 1 + idx * 2
+		x := chat_width + 1 + idx * 2
 
 		ctx.set_bg_color(colors[idx])
 		ctx.draw_point(x, canvas_height + 1)
@@ -255,6 +302,18 @@ pub fn draw_palette(mut ctx ui.Context, selected int) {
 	// drawing selected
 	ctx.set_bg_color(colors[selected])
 	ctx.set_color({})
-	ctx.set_cursor_position(1 + selected * 2, canvas_height + 1)
+	ctx.set_cursor_position(1 + chat_width + selected * 2, canvas_height + 1)
 	ctx.write('><')
+}
+
+pub fn (mut app App) draw_name() {
+	app.tui.set_bg_color(bg_color)
+	app.tui.draw_text(canvas_width + 2 + chat_width, 1, '$app.name - $app.points')
+}
+
+pub fn (mut app App) draw_chat() {
+	app.tui.draw_rect(1, 1, chat_width, canvas_height)
+	for index, msg in app.chat {
+		app.tui.draw_text(1, canvas_height - app.chat.len + index, msg)
+	}
 }

@@ -3,7 +3,8 @@ import os
 import x.json2
 
 struct App {
-	word string
+	word   string
+	client int
 }
 
 struct Server {
@@ -15,7 +16,9 @@ mut:
 struct Client {
 	id int
 mut:
-	conn net.TcpConn
+	connected bool
+	name      string
+	conn      net.TcpConn
 }
 
 fn (mut server Server) handle_conn(conn &net.TcpConn) {
@@ -33,6 +36,13 @@ fn (mut server Server) handle_conn(conn &net.TcpConn) {
 			match content['type'].str() {
 				'line' {}
 				'word' {}
+				'join' {
+					server.clients[client.id].name = content['name'].str()
+					println(content['name'].str() + ' joined!')
+				}
+				'leave' {
+					server.clients[client.id].connected = false
+				}
 				else {}
 			}
 			for mut receiver in server.clients {
