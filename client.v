@@ -17,7 +17,7 @@ mut:
 	selected int
 	dragging bool
 	erasing  bool
-	conn     &net.TcpConn
+	conn     &net.TcpConn = 0
 	drawing  bool
 	name     string
 	points   int
@@ -194,6 +194,10 @@ fn on_event(event &ui.Event, mut app App) {
 			app.curr.y = event.y
 		}
 		.mouse_scroll {
+			if !app.drawing {
+				return
+			}
+
 			match event.direction {
 				.up {
 					app.selected++
@@ -241,9 +245,7 @@ fn on_event(event &ui.Event, mut app App) {
 }
 
 fn main() {
-	mut app := &App{
-		conn: 0
-	}
+	mut app := &App{}
 
 	app.tui = ui.init(
 		user_data: app
